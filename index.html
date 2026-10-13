@@ -185,19 +185,11 @@
     padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
   }
 
-  canvas#sigPad {
-    width: 100%; height: 160px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    touch-action: none;
-    background: var(--surface);
+  input[readonly] {
+    background: var(--bg);
+    color: var(--ink-light);
+    cursor: default;
   }
-  .sig-actions { margin-top: 8px; }
-  .sig-actions button {
-    border: 1px solid var(--border); background: var(--surface); border-radius: 6px;
-    padding: 6px 12px; font-size: 12px; cursor: pointer;
-  }
-  .sig-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
 
   .total-time {
     background: var(--accent-tint); border-radius: 8px; padding: 11px 12px;
@@ -264,7 +256,7 @@
         </div>
         <div class="field">
           <label>Date of Installation<span class="req">*</span></label>
-          <input type="date" id="installDate" required>
+          <input type="date" id="installDate" required readonly>
         </div>
       </div>
     </section>
@@ -359,10 +351,6 @@
           <input type="date" id="dateSubmitted">
         </div>
       </div>
-      <label>Signature</label>
-      <canvas id="sigPad"></canvas>
-      <div class="sig-actions"><button type="button" id="clearSig">Clear</button></div>
-      <p class="sig-note">Or, if signing isn't possible on this device, select your name in "Reporting Installer Name" above as your digital confirmation.</p>
     </section>
 
     <section class="card">
@@ -510,42 +498,6 @@ function updateTotalTime() {
 }
 els.startTime.addEventListener('change', updateTotalTime);
 els.finishTime.addEventListener('change', updateTotalTime);
-
-// ---- Signature pad ----------------------------------------------------------
-const sigCanvas = document.getElementById('sigPad');
-const sigCtx = sigCanvas.getContext('2d');
-function resizeSigCanvas() {
-  const ratio = window.devicePixelRatio || 1;
-  const rect = sigCanvas.getBoundingClientRect();
-  sigCanvas.width = rect.width * ratio;
-  sigCanvas.height = rect.height * ratio;
-  sigCtx.scale(ratio, ratio);
-  sigCtx.lineWidth = 2;
-  sigCtx.lineCap = 'round';
-  sigCtx.strokeStyle = '#404141';
-}
-resizeSigCanvas();
-window.addEventListener('resize', () => { const d = sigCanvas.toDataURL(); resizeSigCanvas(); });
-
-let drawing = false, hasSig = false;
-function pos(e) {
-  const rect = sigCanvas.getBoundingClientRect();
-  const p = e.touches ? e.touches[0] : e;
-  return { x: p.clientX - rect.left, y: p.clientY - rect.top };
-}
-function start(e) { drawing = true; hasSig = true; const p = pos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x, p.y); e.preventDefault(); }
-function move(e) { if (!drawing) return; const p = pos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); e.preventDefault(); }
-function end() { drawing = false; }
-sigCanvas.addEventListener('mousedown', start);
-sigCanvas.addEventListener('mousemove', move);
-window.addEventListener('mouseup', end);
-sigCanvas.addEventListener('touchstart', start, { passive: false });
-sigCanvas.addEventListener('touchmove', move, { passive: false });
-sigCanvas.addEventListener('touchend', end);
-document.getElementById('clearSig').addEventListener('click', () => {
-  sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
-  hasSig = false;
-});
 
 // ---- File collateral --------------------------------------------------------
 const collected = { photos: [], videos: [], audio: [], documents: [] };
@@ -748,12 +700,6 @@ function buildPdf() {
   heading('5. Installer Sign-Off');
   field('Reporting Installer Name', els.reportingInstaller.value);
   field('Date Submitted', els.dateSubmitted.value || new Date().toISOString().slice(0, 10));
-  if (hasSig) {
-    doc.text('Signature:', margin, y);
-    y += 6;
-    doc.addImage(sigCanvas.toDataURL('image/png'), 'PNG', margin, y, 200, 60);
-    y += 70;
-  }
   spacer();
 
   heading('6. Time on Site');
